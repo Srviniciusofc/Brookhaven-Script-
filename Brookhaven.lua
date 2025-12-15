@@ -1,15 +1,16 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/tlredz/Library/refs/heads/main/redz-V5-remake/main.luau"))()
 
 
+Library:SetAccent(Color3.fromRGB(98, 37, 209)) -- roxo
 
 
 
-
-local Window = Library:MakeWindow({
+ Window = Library:MakeWindow({
   Title = "Vini Hub : Brookhaven 🏡",
   SubTitle = "dev by real_redz",
   ScriptFolder = "redz-library-V5"
-})
+  })
+
 
 
 
@@ -40,4 +41,3 @@ local Tab = Window:MakeTab({
 
 
 
-local Tab = Window:MakeTab({ "🥵", "Home" })
