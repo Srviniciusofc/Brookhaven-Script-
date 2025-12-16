@@ -1,13 +1,12 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/tlredz/Library/refs/heads/main/redz-V5-remake/main.luau"))()
 
+Library:SetTheme("Dark")
 
-Library:SetAccent(Color3.fromRGB(98, 37, 209)) -- roxo
-
-
+Library:SetAccent(Color3.fromRGB(98, 37, 209))
 
  Window = Library:MakeWindow({
   Title = "Vini Hub : Brookhaven 🏡",
-  SubTitle = "dev by real_redz",
+  SubTitle = "Vinicius",
   ScriptFolder = "redz-library-V5"
   })
 
