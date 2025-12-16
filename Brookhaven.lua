@@ -71,19 +71,30 @@ local function GetPlayersList()
 end
 
 --==================================================
--- FUNÇÃO: MATAR PLAYER
+-- FUNÇÃO: TENTAR MATAR (MULTI MÉTODOS)
 --==================================================
 local function KillPlayer(plr)
-    if plr and plr.Character then
-        local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-        if hum and hum.Health > 0 then
+    if not plr or not plr.Character then return end
+
+    local char = plr.Character
+    local hum = char:FindFirstChildOfClass("Humanoid")
+
+    if hum then
+        pcall(function()
             hum.Health = 0
-        end
+            hum:TakeDamage(9e9)
+            hum.BreakJointsOnDeath = true
+            hum:ChangeState(Enum.HumanoidStateType.Dead)
+        end)
     end
+
+    pcall(function()
+        char:BreakJoints()
+    end)
 end
 
 --==================================================
--- DROPDOWN: SELECIONAR PLAYER
+-- DROPDOWN
 --==================================================
 Tab:AddDropdown({
     Name = "Selecionar Player",
@@ -96,7 +107,7 @@ Tab:AddDropdown({
 })
 
 --==================================================
--- TOGGLE: LOOP KILL
+-- TOGGLE LOOP KILL
 --==================================================
 Tab:AddToggle({
     Name = "Loop Kill",
@@ -119,4 +130,4 @@ Tab:AddToggle({
     end
 })
 
-print("✅ Loop Kill + Dropdown carregado")
+print("✅ Loop Kill agressivo carregado")
