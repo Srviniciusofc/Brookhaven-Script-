@@ -51,14 +51,14 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 --==================================================
--- VARIÁVEIS GLOBAIS
+-- VARIÁVEIS
 --==================================================
 getgenv().SelectedPlayer = nil
 getgenv().LoopKill = false
 local LoopConnection
 
 --==================================================
--- FUNÇÃO: PEGAR LISTA DE PLAYERS
+-- FUNÇÃO: PEGAR PLAYERS
 --==================================================
 local function GetPlayersList()
     local list = {}
@@ -86,35 +86,12 @@ end
 -- DROPDOWN: SELECIONAR PLAYER
 --==================================================
 Tab:AddDropdown({
-    Title = "Selecionar Player",
-    Description = "Escolha o player para matar",
-    Values = GetPlayersList(),
-    Multi = false,
+    Name = "Selecionar Player",
+    Options = GetPlayersList(),
     Default = nil,
-    Callback = function(value)
-        getgenv().SelectedPlayer = Players:FindFirstChild(value)
-        print("🎯 Player selecionado:", value)
-    end
-})
-
---==================================================
--- BOTÃO: ATUALIZAR LISTA
---==================================================
-Tab:AddButton({
-    Title = "Atualizar Lista de Players",
-    Callback = function()
-        Tab:ClearDropdown("Selecionar Player")
-        Tab:AddDropdown({
-            Title = "Selecionar Player",
-            Description = "Escolha o player para matar",
-            Values = GetPlayersList(),
-            Multi = false,
-            Default = nil,
-            Callback = function(value)
-                getgenv().SelectedPlayer = Players:FindFirstChild(value)
-                print("🎯 Player selecionado:", value)
-            end
-        })
+    Callback = function(Value)
+        getgenv().SelectedPlayer = Players:FindFirstChild(Value)
+        print("🎯 Player selecionado:", Value)
     end
 })
 
@@ -122,8 +99,7 @@ Tab:AddButton({
 -- TOGGLE: LOOP KILL
 --==================================================
 Tab:AddToggle({
-    Title = "Loop Kill",
-    Description = "Mata o player selecionado infinitamente",
+    Name = "Loop Kill",
     Default = false,
     Callback = function(state)
         getgenv().LoopKill = state
@@ -143,4 +119,4 @@ Tab:AddToggle({
     end
 })
 
-print("✅ Script Loop Kill carregado com sucesso")
+print("✅ Loop Kill + Dropdown carregado")
