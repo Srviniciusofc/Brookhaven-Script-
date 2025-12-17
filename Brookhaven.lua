@@ -32,7 +32,7 @@ local Tab = Window:MakeTab({
 
 
 
-Tab:AddSection("Matar Players")
+Tab:AddSection("Soares Gay")
 
 
 
@@ -44,8 +44,13 @@ Tab:AddSection("Matar Players")
 
 
 --==================================================
--- TELECINESE REAL
+-- TELECINESE REAL (SEGUIR O DEDO)
 --==================================================
+
+-- ESTADO GLOBAL (não reinicia)
+getgenv().TelekinesisActive = getgenv().TelekinesisActive or false
+getgenv().TelekinesisData = getgenv().TelekinesisData or {}
+
 Tab:AddButton({
     Name = "🧲 Telecinese (Carros)",
     Callback = function()
@@ -57,127 +62,103 @@ Tab:AddButton({
         local Player = Players.LocalPlayer
         local Camera = workspace.CurrentCamera
 
-        local Active = false
-        local SelectedCar = nil
-
-        local AlignPos, AlignOri
-        local CarAttach, TargetAttach
-        local RenderConnection
-        local TouchConnection
+        local Data = getgenv().TelekinesisData
 
         --==============================
-        -- LIMPAR TUDO
+        -- LIMPAR
         --==============================
         local function Clear()
-            if RenderConnection then
-                RenderConnection:Disconnect()
-                RenderConnection = nil
-            end
-            if TouchConnection then
-                TouchConnection:Disconnect()
-                TouchConnection = nil
-            end
+            if Data.Render then Data.Render:Disconnect() end
+            if Data.TouchMove then Data.TouchMove:Disconnect() end
+            if Data.TouchSelect then Data.TouchSelect:Disconnect() end
 
-            if AlignPos then AlignPos:Destroy() end
-            if AlignOri then AlignOri:Destroy() end
-            if CarAttach then CarAttach:Destroy() end
-            if TargetAttach then TargetAttach:Destroy() end
+            if Data.AlignPos then Data.AlignPos:Destroy() end
+            if Data.AlignOri then Data.AlignOri:Destroy() end
+            if Data.CarAttach then Data.CarAttach:Destroy() end
+            if Data.TargetAttach then Data.TargetAttach:Destroy() end
 
-            AlignPos, AlignOri, CarAttach, TargetAttach = nil, nil, nil, nil
-            SelectedCar = nil
+            getgenv().TelekinesisData = {}
         end
-
-        --==============================
-        -- SELECIONAR CARRO COM TOQUE
-        --==============================
-        TouchConnection = UserInputService.TouchTap:Connect(function(touches)
-            if not Active then return end
-            if SelectedCar then return end
-
-            local pos = touches[1]
-            local ray = Camera:ViewportPointToRay(pos.X, pos.Y)
-
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = {Player.Character}
-            params.FilterType = Enum.RaycastFilterType.Blacklist
-
-            local result = workspace:Raycast(ray.Origin, ray.Direction * 500, params)
-
-            if result and result.Instance then
-                local model = result.Instance:FindFirstAncestorOfClass("Model")
-                if model and workspace:FindFirstChild("Vehicles") and model:IsDescendantOf(workspace.Vehicles) then
-                    SelectedCar = model
-                end
-            end
-        end)
 
         --==============================
         -- INICIAR TELECINESE
         --==============================
-        local function StartTelekinesis()
-            if not SelectedCar then return end
-
-            local root = SelectedCar.PrimaryPart or SelectedCar:FindFirstChildWhichIsA("BasePart")
+        local function StartTelekinesis(car)
+            local root = car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart")
             if not root then return end
 
-            CarAttach = Instance.new("Attachment", root)
-            TargetAttach = Instance.new("Attachment", workspace.Terrain)
+            Data.CarAttach = Instance.new("Attachment", root)
+            Data.TargetAttach = Instance.new("Attachment", workspace.Terrain)
 
-            AlignPos = Instance.new("AlignPosition", root)
-            AlignPos.Attachment0 = CarAttach
-            AlignPos.Attachment1 = TargetAttach
-            AlignPos.MaxForce = 200000
-            AlignPos.Responsiveness = 60
+            Data.AlignPos = Instance.new("AlignPosition", root)
+            Data.AlignPos.Attachment0 = Data.CarAttach
+            Data.AlignPos.Attachment1 = Data.TargetAttach
+            Data.AlignPos.MaxForce = 300000
+            Data.AlignPos.Responsiveness = 80
 
-            AlignOri = Instance.new("AlignOrientation", root)
-            AlignOri.Attachment0 = CarAttach
-            AlignOri.Attachment1 = TargetAttach
-            AlignOri.MaxTorque = 200000
-            AlignOri.Responsiveness = 60
-
-            RenderConnection = RunService.RenderStepped:Connect(function()
-                if not Active then return end
-
-                local ray = Camera:ViewportPointToRay(
-                    Camera.ViewportSize.X / 2,
-                    Camera.ViewportSize.Y / 2
-                )
-
-                local targetPos = ray.Origin + ray.Direction * 12
-                TargetAttach.WorldPosition = targetPos
-                TargetAttach.WorldCFrame = CFrame.lookAt(
-                    targetPos,
-                    targetPos + ray.Direction
-                )
-            end)
+            Data.AlignOri = Instance.new("AlignOrientation", root)
+            Data.AlignOri.Attachment0 = Data.CarAttach
+            Data.AlignOri.Attachment1 = Data.TargetAttach
+            Data.AlignOri.MaxTorque = 300000
+            Data.AlignOri.Responsiveness = 80
         end
 
         --==============================
-        -- TOGGLE + NOTIFICAÇÃO (REDZ)
+        -- TOGGLE
         --==============================
-        Active = not Active
+        getgenv().TelekinesisActive = not getgenv().TelekinesisActive
 
-        if Active then
+        if getgenv().TelekinesisActive then
             Window:Notify({
                 Title = "🧲 Telecinese",
-                Content = "Telecinese ATIVADA\nToque em um carro",
+                Content = "ATIVADA\nToque e arraste um carro",
                 Image = "rbxassetid://10734953451",
                 Duration = 4
             })
 
-            -- espera selecionar o carro
-            task.delay(0.2, StartTelekinesis)
+            -- TOCAR PARA SELECIONAR
+            Data.TouchSelect = UserInputService.TouchTap:Connect(function(touches)
+                if Data.Car then return end
+
+                local pos = touches[1]
+                local ray = Camera:ViewportPointToRay(pos.X, pos.Y)
+
+                local params = RaycastParams.new()
+                params.FilterDescendantsInstances = { Player.Character }
+                params.FilterType = Enum.RaycastFilterType.Blacklist
+
+                local result = workspace:Raycast(ray.Origin, ray.Direction * 500, params)
+
+                if result and result.Instance then
+                    local model = result.Instance:FindFirstAncestorOfClass("Model")
+                    if model and workspace:FindFirstChild("Vehicles")
+                        and model:IsDescendantOf(workspace.Vehicles) then
+
+                        Data.Car = model
+                        StartTelekinesis(model)
+                    end
+                end
+            end)
+
+            -- ARRASTAR COM O DEDO
+            Data.TouchMove = UserInputService.TouchMoved:Connect(function(touch)
+                if not Data.TargetAttach then return end
+
+                local ray = Camera:ViewportPointToRay(touch.Position.X, touch.Position.Y)
+                local pos = ray.Origin + ray.Direction * 14
+
+                Data.TargetAttach.WorldPosition = pos
+            end)
 
         else
             Clear()
 
             Window:Notify({
                 Title = "🧲 Telecinese",
-                Content = "Telecinese DESATIVADA",
+                Content = "DESATIVADA",
                 Image = "rbxassetid://10734953451",
-                Duration = 4
+                Duration = 3
             })
         end
-
     end
 })
