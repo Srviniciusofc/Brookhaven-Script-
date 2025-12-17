@@ -44,7 +44,7 @@ Tab:AddSection("Soares Gay")
 
 
 --==================================================
--- CAR FLY DEFINITIVO (SEM SUBIR INFINITO)
+-- CAR FLY FINAL - ESTÁVEL / ANTI-EMPINAR
 --==================================================
 
 getgenv().CarFlyActive = getgenv().CarFlyActive or false
@@ -64,7 +64,7 @@ Tab:AddButton({
         local Humanoid = Character:WaitForChild("Humanoid")
 
         local Data = getgenv().CarFlyData
-        local Speed = Data.Speed or 100
+        local Speed = 100
 
         local Up = false
         local Down = false
@@ -74,7 +74,6 @@ Tab:AddButton({
         --==============================
         local function Clear()
             if Data.Render then Data.Render:Disconnect() end
-            if Data.Gui then Data.Gui:Destroy() end
             getgenv().CarFlyActive = false
             getgenv().CarFlyData = {}
         end
@@ -123,6 +122,7 @@ Tab:AddButton({
         local seat, root = GetCar()
         if not seat or not root then return end
 
+        -- garante física local
         pcall(function()
             root:SetNetworkOwner(Player)
         end)
@@ -136,18 +136,21 @@ Tab:AddButton({
         })
 
         --==============================
-        -- LOOP FINAL (SEM BUG)
+        -- LOOP FINAL (CORRETO)
         --==============================
         Data.Render = RunService.RenderStepped:Connect(function()
             local throttle = seat.Throttle
             local steer = seat.Steer
 
             local cam = Camera.CFrame
-            local move =
-                (cam.LookVector * throttle) +
-                (cam.RightVector * steer)
 
-            -- Y SOMENTE COM INPUT
+            -- movimento horizontal SEM inclinar
+            local forward = Vector3.new(cam.LookVector.X, 0, cam.LookVector.Z)
+            local right = Vector3.new(cam.RightVector.X, 0, cam.RightVector.Z)
+
+            local move = (forward * throttle) + (right * steer)
+
+            -- eixo Y SOMENTE por input
             local yVel = 0
             if Up then yVel = Speed end
             if Down then yVel = -Speed end
@@ -158,8 +161,13 @@ Tab:AddButton({
                 velocity = velocity + (move.Unit * Speed)
             end
 
+            -- aplica movimento
             root.AssemblyLinearVelocity = velocity
             root.AssemblyAngularVelocity = Vector3.zero
+
+            -- 🔒 trava total de inclinação (anti-empinar)
+            local yaw = math.atan2(forward.X, forward.Z)
+            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, yaw, 0)
         end)
     end
 })
