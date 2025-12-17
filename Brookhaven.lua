@@ -44,7 +44,7 @@ Tab:AddSection("Soares Gay")
 
 
 --==================================================
--- CAR FLY MOBILE - FIX DEFINITIVO
+-- CAR FLY - CONTROLE REAL (VehicleSeat)
 --==================================================
 
 getgenv().CarFlyActive = getgenv().CarFlyActive or false
@@ -56,7 +56,6 @@ Tab:AddButton({
 
         local Players = game:GetService("Players")
         local RunService = game:GetService("RunService")
-        local UIS = game:GetService("UserInputService")
 
         local Player = Players.LocalPlayer
         local Camera = workspace.CurrentCamera
@@ -65,15 +64,13 @@ Tab:AddButton({
 
         local Data = getgenv().CarFlyData
         local Speed = Data.Speed or 90
-        local LiftForce = 55 -- força de sustentação
-        local MoveVector = Vector3.zero
+        local Lift = 50 -- sustentação (não é impulso infinito)
 
         --==============================
         -- LIMPAR
         --==============================
         local function Clear()
             if Data.Render then Data.Render:Disconnect() end
-            if Data.Input then Data.Input:Disconnect() end
             if Data.BV then Data.BV:Destroy() end
             if Data.BG then Data.BG:Destroy() end
             if Data.Gui then Data.Gui:Destroy() end
@@ -82,13 +79,15 @@ Tab:AddButton({
         end
 
         --==============================
-        -- PEGAR CARRO
+        -- PEGAR SEAT / CARRO
         --==============================
-        local function GetCarRoot()
-            if Humanoid.SeatPart then
-                local car = Humanoid.SeatPart:FindFirstAncestorOfClass("Model")
+        local function GetSeatAndRoot()
+            if Humanoid.SeatPart and Humanoid.SeatPart:IsA("VehicleSeat") then
+                local seat = Humanoid.SeatPart
+                local car = seat:FindFirstAncestorOfClass("Model")
                 if car then
-                    return car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart")
+                    local root = car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart")
+                    return seat, root
                 end
             end
         end
@@ -154,59 +153,49 @@ Tab:AddButton({
             Clear()
             Window:Notify({
                 Title = "Car Fly",
-                Content = "Car Fly DESATIVADO",
+                Content = "DESATIVADO",
                 Duration = 3
             })
             return
         end
 
-        local root = GetCarRoot()
-        if not root then return end
+        local seat, root = GetSeatAndRoot()
+        if not seat or not root then return end
 
         getgenv().CarFlyActive = true
 
         Window:Notify({
             Title = "Car Fly",
-            Content = "Car Fly ATIVADO",
+            Content = "ATIVADO",
             Duration = 3
         })
 
         -- BODY MOVERS
         Data.BV = Instance.new("BodyVelocity", root)
         Data.BV.MaxForce = Vector3.new(1e9,1e9,1e9)
-        Data.BV.Velocity = Vector3.zero
 
         Data.BG = Instance.new("BodyGyro", root)
-        Data.BG.MaxTorque = Vector3.new(0,1e9,0) -- 🔥 NÃO gira louco
+        Data.BG.MaxTorque = Vector3.new(0,1e9,0)
         Data.BG.P = 20000
 
         CreateSpeedGui()
 
         --==============================
-        -- ANALÓGICO (COM ZONA MORTA)
-        --==============================
-        Data.Input = UIS.InputChanged:Connect(function(input)
-            if input.KeyCode == Enum.KeyCode.Thumbstick1 then
-                if input.Position.Magnitude < 0.15 then
-                    MoveVector = Vector3.zero
-                    return
-                end
-
-                local cam = Camera.CFrame
-                MoveVector =
-                    (cam.RightVector * input.Position.X) +
-                    (cam.LookVector * -input.Position.Y)
-            end
-        end)
-
-        --==============================
-        -- LOOP
+        -- LOOP (CONTROLE REAL)
         --==============================
         Data.Render = RunService.RenderStepped:Connect(function()
-            local velocity = Vector3.new(0, LiftForce, 0)
+            local throttle = seat.Throttle -- frente / trás
+            local steer = seat.Steer       -- esquerda / direita
 
-            if MoveVector.Magnitude > 0 then
-                velocity = velocity + (MoveVector.Unit * Speed)
+            local cam = Camera.CFrame
+            local move =
+                (cam.LookVector * throttle) +
+                (cam.RightVector * steer)
+
+            local velocity = Vector3.new(0, Lift, 0)
+
+            if move.Magnitude > 0 then
+                velocity = velocity + (move.Unit * Speed)
             end
 
             Data.BV.Velocity = velocity
