@@ -44,7 +44,7 @@ Tab:AddSection("Soares Gay")
 
 
 --==================================================
--- CAR FLY MOBILE (ANALÓGICO REAL)
+-- CAR FLY MOBILE - FIX DEFINITIVO
 --==================================================
 
 getgenv().CarFlyActive = getgenv().CarFlyActive or false
@@ -64,8 +64,8 @@ Tab:AddButton({
         local Humanoid = Character:WaitForChild("Humanoid")
 
         local Data = getgenv().CarFlyData
-        local Speed = Data.Speed or 80
-        local FlyHeight = 35
+        local Speed = Data.Speed or 90
+        local LiftForce = 55 -- força de sustentação
         local MoveVector = Vector3.zero
 
         --==============================
@@ -102,13 +102,13 @@ Tab:AddButton({
             gui.ResetOnSpawn = false
 
             local frame = Instance.new("Frame", gui)
-            frame.Size = UDim2.new(0, 140, 0, 80)
-            frame.Position = UDim2.new(0.03,0,0.55,0)
+            frame.Size = UDim2.new(0,140,0,70)
+            frame.Position = UDim2.new(0.03,0,0.6,0)
             frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
             frame.BackgroundTransparency = 0.1
             frame.Active = true
             frame.Draggable = true
-            Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+            Instance.new("UICorner", frame)
 
             local plus = Instance.new("TextButton", frame)
             plus.Size = UDim2.new(0.45,0,0.45,0)
@@ -130,8 +130,8 @@ Tab:AddButton({
             label.Size = UDim2.new(1,0,0.35,0)
             label.Position = UDim2.new(0,0,0.6,0)
             label.BackgroundTransparency = 1
-            label.TextColor3 = Color3.new(1,1,1)
             label.TextScaled = true
+            label.TextColor3 = Color3.new(1,1,1)
             label.Text = "Speed: "..Speed
 
             plus.MouseButton1Click:Connect(function()
@@ -174,18 +174,24 @@ Tab:AddButton({
         -- BODY MOVERS
         Data.BV = Instance.new("BodyVelocity", root)
         Data.BV.MaxForce = Vector3.new(1e9,1e9,1e9)
+        Data.BV.Velocity = Vector3.zero
 
         Data.BG = Instance.new("BodyGyro", root)
-        Data.BG.MaxTorque = Vector3.new(1e9,1e9,1e9)
-        Data.BG.P = 40000
+        Data.BG.MaxTorque = Vector3.new(0,1e9,0) -- 🔥 NÃO gira louco
+        Data.BG.P = 20000
 
         CreateSpeedGui()
 
         --==============================
-        -- ANALÓGICO MOBILE REAL
+        -- ANALÓGICO (COM ZONA MORTA)
         --==============================
         Data.Input = UIS.InputChanged:Connect(function(input)
             if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+                if input.Position.Magnitude < 0.15 then
+                    MoveVector = Vector3.zero
+                    return
+                end
+
                 local cam = Camera.CFrame
                 MoveVector =
                     (cam.RightVector * input.Position.X) +
@@ -197,10 +203,13 @@ Tab:AddButton({
         -- LOOP
         --==============================
         Data.Render = RunService.RenderStepped:Connect(function()
-            Data.BV.Velocity =
-                (MoveVector * Speed) + Vector3.new(0, FlyHeight, 0)
+            local velocity = Vector3.new(0, LiftForce, 0)
 
-            Data.BG.CFrame = Camera.CFrame
+            if MoveVector.Magnitude > 0 then
+                velocity = velocity + (MoveVector.Unit * Speed)
+            end
+
+            Data.BV.Velocity = velocity
         end)
     end
 })
