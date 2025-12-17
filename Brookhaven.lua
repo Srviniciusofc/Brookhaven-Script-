@@ -44,116 +44,127 @@ Tab:AddSection("Matar Players")
 
 
 Tab:AddButton({
-    Name = "🚗 Levitar Carro (Touch)",
+    Name = "🧲 Telecinese (Carros)",
     Callback = function()
 
+        --==============================
         -- SERVICES
+        --==============================
         local Players = game:GetService("Players")
         local UserInputService = game:GetService("UserInputService")
         local RunService = game:GetService("RunService")
 
         local Player = Players.LocalPlayer
-        local Character = Player.Character or Player.CharacterAdded:Wait()
-
-        local Flying = false
-        local Speed = 70
-
-        local BV, BG
-        local Car
-        local Touches = {}
-        local FlyConnection
+        local Camera = workspace.CurrentCamera
 
         --==============================
-        -- PEGAR CARRO
+        -- ESTADO
         --==============================
-        local function GetCar()
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("VehicleSeat") and v.Occupant then
-                    if v.Occupant.Parent == Character then
-                        return v.Parent
-                    end
-                end
+        local Active = false
+        local SelectedCar = nil
+
+        local AlignPos, AlignOri
+        local CarAttach, TargetAttach
+        local RenderConnection
+        local TouchConnection
+
+        --==============================
+        -- LIMPAR
+        --==============================
+        local function Clear()
+            if RenderConnection then
+                RenderConnection:Disconnect()
+                RenderConnection = nil
             end
+            if TouchConnection then
+                TouchConnection:Disconnect()
+                TouchConnection = nil
+            end
+
+            if AlignPos then AlignPos:Destroy() end
+            if AlignOri then AlignOri:Destroy() end
+            if CarAttach then CarAttach:Destroy() end
+            if TargetAttach then TargetAttach:Destroy() end
+
+            AlignPos, AlignOri, CarAttach, TargetAttach = nil, nil, nil, nil
+            SelectedCar = nil
         end
 
         --==============================
-        -- START FLY
+        -- INICIAR TELECINESE
         --==============================
-        local function StartFly(car)
-            local root = car:FindFirstChildWhichIsA("BasePart")
+        local function StartTelekinesis()
+            if not SelectedCar then return end
+
+            local root =
+                SelectedCar.PrimaryPart
+                or SelectedCar:FindFirstChildWhichIsA("BasePart")
+
             if not root then return end
 
-            BV = Instance.new("BodyVelocity")
-            BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-            BV.Velocity = Vector3.zero
-            BV.Parent = root
+            CarAttach = Instance.new("Attachment", root)
+            TargetAttach = Instance.new("Attachment", workspace.Terrain)
 
-            BG = Instance.new("BodyGyro")
-            BG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-            BG.P = 100000
-            BG.Parent = root
+            AlignPos = Instance.new("AlignPosition", root)
+            AlignPos.Attachment0 = CarAttach
+            AlignPos.Attachment1 = TargetAttach
+            AlignPos.MaxForce = 300000
+            AlignPos.Responsiveness = 70
 
-            FlyConnection = RunService.RenderStepped:Connect(function()
-                if not Flying then return end
+            AlignOri = Instance.new("AlignOrientation", root)
+            AlignOri.Attachment0 = CarAttach
+            AlignOri.Attachment1 = TargetAttach
+            AlignOri.MaxTorque = 300000
+            AlignOri.Responsiveness = 70
 
-                local cam = workspace.CurrentCamera
-                BG.CFrame = cam.CFrame
+            RenderConnection = RunService.RenderStepped:Connect(function()
+                if not Active then return end
 
-                local move = Vector3.zero
+                local ray = Camera:ViewportPointToRay(
+                    Camera.ViewportSize.X / 2,
+                    Camera.ViewportSize.Y / 2
+                )
 
-                -- 1 dedo = mover
-                if #Touches == 1 then
-                    local delta = Touches[1].Delta
-                    move = move + cam.CFrame.LookVector * (-delta.Y / 6)
-                    move = move + cam.CFrame.RightVector * (delta.X / 6)
-                end
+                local pos = ray.Origin + ray.Direction * 12
 
-                -- 2 dedos = subir/descer
-                if #Touches >= 2 then
-                    local delta = Touches[1].Delta
-                    move = move + Vector3.new(0, -delta.Y / 4, 0)
-                end
-
-                BV.Velocity = move * Speed
+                TargetAttach.WorldPosition = pos
+                TargetAttach.WorldCFrame = CFrame.lookAt(
+                    pos,
+                    pos + ray.Direction
+                )
             end)
         end
 
         --==============================
-        -- STOP FLY
+        -- SELECIONAR CARRO (TOQUE)
         --==============================
-        local function StopFly()
-            if FlyConnection then
-                FlyConnection:Disconnect()
-                FlyConnection = nil
-            end
-            if BV then BV:Destroy() BV = nil end
-            if BG then BG:Destroy() BG = nil end
-            Touches = {}
-        end
+        TouchConnection = UserInputService.TouchTap:Connect(function(touches)
+            if not Active then return end
+            if SelectedCar then return end
 
-        --==============================
-        -- TOUCH INPUT
-        --==============================
-        UserInputService.TouchStarted:Connect(function(input)
-            table.insert(Touches, {
-                Input = input,
-                Delta = Vector2.zero
-            })
-        end)
+            local pos = touches[1]
+            local ray = Camera:ViewportPointToRay(pos.X, pos.Y)
 
-        UserInputService.TouchMoved:Connect(function(input)
-            for _, t in pairs(Touches) do
-                if t.Input == input then
-                    t.Delta = input.Delta
-                end
-            end
-        end)
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = { Player.Character }
+            params.FilterType = Enum.RaycastFilterType.Blacklist
 
-        UserInputService.TouchEnded:Connect(function(input)
-            for i, t in ipairs(Touches) do
-                if t.Input == input then
-                    table.remove(Touches, i)
-                    break
+            local result = workspace:Raycast(
+                ray.Origin,
+                ray.Direction * 500,
+                params
+            )
+
+            if result and result.Instance then
+                local model =
+                    result.Instance:FindFirstAncestorOfClass("Model")
+
+                if model
+                    and workspace:FindFirstChild("Vehicles")
+                    and model:IsDescendantOf(workspace.Vehicles)
+                then
+                    SelectedCar = model
+                    StartTelekinesis()
                 end
             end
         end)
@@ -161,20 +172,13 @@ Tab:AddButton({
         --==============================
         -- TOGGLE
         --==============================
-        Flying = not Flying
+        Active = not Active
 
-        if Flying then
-            Car = GetCar()
-            if Car then
-                StartFly(Car)
-                print("🚗 Levitação ATIVADA")
-            else
-                Flying = false
-                warn("❌ Entre em um carro primeiro")
-            end
+        if Active then
+            print("🧲 Telecinese ATIVADA — toque em um carro")
         else
-            StopFly()
-            print("🛑 Levitação DESATIVADA")
+            Clear()
+            print("🛑 Telecinese DESATIVADA")
         end
 
     end
