@@ -44,7 +44,9 @@ Tab:AddSection("Soares Gay")
 
 
 --==================================================
--- TELECINESE REAL (CORRIGIDA)
+-- TELECINESE REAL (BROOKHAVEN)
+-- FUNCIONA SEM SENTAR
+-- SEGUE O DEDO
 --==================================================
 
 getgenv().TeleActive = getgenv().TeleActive or false
@@ -55,8 +57,7 @@ Tab:AddButton({
     Callback = function()
 
         local Players = game:GetService("Players")
-        local UIS = game:GetService("UserInputService")
-        local RunService = game:GetService("RunService")
+        local UserInputService = game:GetService("UserInputService")
 
         local Player = Players.LocalPlayer
         local Camera = workspace.CurrentCamera
@@ -69,10 +70,8 @@ Tab:AddButton({
             if Data.TouchSelect then Data.TouchSelect:Disconnect() end
             if Data.TouchMove then Data.TouchMove:Disconnect() end
 
-            if Data.AlignPos then Data.AlignPos:Destroy() end
-            if Data.AlignOri then Data.AlignOri:Destroy() end
-            if Data.CarAttach then Data.CarAttach:Destroy() end
-            if Data.TargetAttach then Data.TargetAttach:Destroy() end
+            if Data.BodyPos then Data.BodyPos:Destroy() end
+            if Data.BodyGyro then Data.BodyGyro:Destroy() end
 
             getgenv().TeleData = {}
         end
@@ -84,25 +83,18 @@ Tab:AddButton({
             local root = car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart")
             if not root then return end
 
-            -- 🔥 ISSO É O QUE FAZ FUNCIONAR SEM SENTAR
-            pcall(function()
-                root:SetNetworkOwner(Player)
-            end)
+            Data.BodyPos = Instance.new("BodyPosition")
+            Data.BodyPos.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+            Data.BodyPos.P = 40000
+            Data.BodyPos.D = 1500
+            Data.BodyPos.Position = root.Position
+            Data.BodyPos.Parent = root
 
-            Data.CarAttach = Instance.new("Attachment", root)
-            Data.TargetAttach = Instance.new("Attachment", workspace.Terrain)
-
-            Data.AlignPos = Instance.new("AlignPosition", root)
-            Data.AlignPos.Attachment0 = Data.CarAttach
-            Data.AlignPos.Attachment1 = Data.TargetAttach
-            Data.AlignPos.MaxForce = 500000
-            Data.AlignPos.Responsiveness = 90
-
-            Data.AlignOri = Instance.new("AlignOrientation", root)
-            Data.AlignOri.Attachment0 = Data.CarAttach
-            Data.AlignOri.Attachment1 = Data.TargetAttach
-            Data.AlignOri.MaxTorque = 500000
-            Data.AlignOri.Responsiveness = 90
+            Data.BodyGyro = Instance.new("BodyGyro")
+            Data.BodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+            Data.BodyGyro.P = 30000
+            Data.BodyGyro.CFrame = root.CFrame
+            Data.BodyGyro.Parent = root
         end
 
         --==============================
@@ -118,12 +110,12 @@ Tab:AddButton({
                 Duration = 4
             })
 
-            -- TOCAR PRA SELECIONAR
-            Data.TouchSelect = UIS.TouchTap:Connect(function(touches)
+            -- TOCAR PARA SELECIONAR CARRO
+            Data.TouchSelect = UserInputService.TouchTap:Connect(function(touches)
                 if Data.Car then return end
 
-                local p = touches[1]
-                local ray = Camera:ViewportPointToRay(p.X, p.Y)
+                local touch = touches[1]
+                local ray = Camera:ViewportPointToRay(touch.X, touch.Y)
 
                 local params = RaycastParams.new()
                 params.FilterDescendantsInstances = { Player.Character }
@@ -143,16 +135,16 @@ Tab:AddButton({
             end)
 
             -- ARRASTAR COM O DEDO
-            Data.TouchMove = UIS.TouchMoved:Connect(function(touch)
-                if not Data.TargetAttach then return end
+            Data.TouchMove = UserInputService.TouchMoved:Connect(function(touch)
+                if not Data.BodyPos then return end
 
                 local ray = Camera:ViewportPointToRay(
                     touch.Position.X,
                     touch.Position.Y
                 )
 
-                Data.TargetAttach.WorldPosition =
-                    ray.Origin + ray.Direction * 15
+                Data.BodyPos.Position =
+                    ray.Origin + ray.Direction * 14
             end)
 
         else
