@@ -44,14 +44,14 @@ Tab:AddSection("Soares Gay")
 
 
 --==================================================
--- CAR FLY RÍGIDO (SEM MOLENGO / SEM +=)
+-- CAR FLY ULTRA ESTÁVEL (SEM MOLENGO REAL)
 --==================================================
 
 getgenv().CarFlyActive = getgenv().CarFlyActive or false
 getgenv().CarFlyData = getgenv().CarFlyData or {}
 
 Tab:AddButton({
-    Name = "🚗🪽 Car Fly (Estável)",
+    Name = "🚗🪽 Car Fly (Ultra Stable)",
     Callback = function()
 
         local Players = game:GetService("Players")
@@ -63,20 +63,16 @@ Tab:AddButton({
         local Humanoid = Character:WaitForChild("Humanoid")
 
         local Data = getgenv().CarFlyData
-        local Speed = Data.Speed or 90
-        local Lift = 45
+        local Speed = 100
+        local Lift = 50
 
         --==============================
         -- LIMPAR
         --==============================
         local function Clear()
             if Data.Render then Data.Render:Disconnect() end
-            if Data.Linear then Data.Linear:Destroy() end
-            if Data.Align then Data.Align:Destroy() end
-            if Data.Attach then Data.Attach:Destroy() end
-            if Data.Gui then Data.Gui:Destroy() end
-            getgenv().CarFlyData = {}
             getgenv().CarFlyActive = false
+            getgenv().CarFlyData = {}
         end
 
         --==============================
@@ -109,6 +105,11 @@ Tab:AddButton({
         local seat, root = GetCar()
         if not seat or not root then return end
 
+        -- ⚠️ MUITO IMPORTANTE
+        pcall(function()
+            root:SetNetworkOwner(Player)
+        end)
+
         getgenv().CarFlyActive = true
 
         Window:Notify({
@@ -118,29 +119,7 @@ Tab:AddButton({
         })
 
         --==============================
-        -- FÍSICA RÍGIDA
-        --==============================
-        local attach = Instance.new("Attachment")
-        attach.Parent = root
-        Data.Attach = attach
-
-        local linear = Instance.new("LinearVelocity")
-        linear.Attachment0 = attach
-        linear.MaxForce = math.huge
-        linear.RelativeTo = Enum.ActuatorRelativeTo.World
-        linear.Parent = root
-        Data.Linear = linear
-
-        local align = Instance.new("AlignOrientation")
-        align.Attachment0 = attach
-        align.MaxTorque = math.huge
-        align.Responsiveness = 200
-        align.RigidityEnabled = true
-        align.Parent = root
-        Data.Align = align
-
-        --==============================
-        -- LOOP (CONTROLE FIRME)
+        -- LOOP DURO (SEM FÍSICA ELÁSTICA)
         --==============================
         Data.Render = RunService.RenderStepped:Connect(function()
             local throttle = seat.Throttle
@@ -157,10 +136,11 @@ Tab:AddButton({
                 velocity = velocity + (move.Unit * Speed)
             end
 
-            linear.VectorVelocity = velocity
+            -- MOVIMENTO DIRETO (SEM MOLENGO)
+            root.AssemblyLinearVelocity = velocity
 
-            -- mantém o carro reto
-            align.CFrame = CFrame.new(root.Position, root.Position + cam.LookVector)
+            -- REMOVE QUALQUER BALANÇO / GIRO
+            root.AssemblyAngularVelocity = Vector3.zero
         end)
     end
 })
