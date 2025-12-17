@@ -44,7 +44,7 @@ Tab:AddSection("Soares Gay")
 
 
 --==================================================
--- CAR FLY FINAL (ESTÁVEL + ALTITUDE FIXA)
+-- CAR FLY DEFINITIVO (SEM SUBIR INFINITO)
 --==================================================
 
 getgenv().CarFlyActive = getgenv().CarFlyActive or false
@@ -65,7 +65,7 @@ Tab:AddButton({
 
         local Data = getgenv().CarFlyData
         local Speed = Data.Speed or 100
-        local HoverY = nil
+
         local Up = false
         local Down = false
 
@@ -91,62 +91,6 @@ Tab:AddButton({
                     return seat, root
                 end
             end
-        end
-
-        --==============================
-        -- GUI SPEED
-        --==============================
-        local function CreateGui()
-            local gui = Instance.new("ScreenGui", Player.PlayerGui)
-            gui.ResetOnSpawn = false
-            gui.Name = "CarFlyGui"
-
-            local frame = Instance.new("Frame", gui)
-            frame.Size = UDim2.new(0,160,0,90)
-            frame.Position = UDim2.new(0.03,0,0.55,0)
-            frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-            frame.Active = true
-            frame.Draggable = true
-            Instance.new("UICorner", frame)
-
-            local title = Instance.new("TextLabel", frame)
-            title.Size = UDim2.new(1,0,0.3,0)
-            title.BackgroundTransparency = 1
-            title.Text = "Car Fly"
-            title.TextScaled = true
-            title.TextColor3 = Color3.new(1,1,1)
-
-            local plus = Instance.new("TextButton", frame)
-            plus.Size = UDim2.new(0.45,0,0.3,0)
-            plus.Position = UDim2.new(0.05,0,0.35,0)
-            plus.Text = "+"
-            plus.TextScaled = true
-
-            local minus = Instance.new("TextButton", frame)
-            minus.Size = UDim2.new(0.45,0,0.3,0)
-            minus.Position = UDim2.new(0.5,0,0.35,0)
-            minus.Text = "-"
-            minus.TextScaled = true
-
-            local label = Instance.new("TextLabel", frame)
-            label.Size = UDim2.new(1,0,0.25,0)
-            label.Position = UDim2.new(0,0,0.7,0)
-            label.BackgroundTransparency = 1
-            label.TextScaled = true
-            label.TextColor3 = Color3.new(1,1,1)
-            label.Text = "Speed: "..Speed
-
-            plus.MouseButton1Click:Connect(function()
-                Speed = Speed + 10
-                label.Text = "Speed: "..Speed
-            end)
-
-            minus.MouseButton1Click:Connect(function()
-                Speed = math.max(20, Speed - 10)
-                label.Text = "Speed: "..Speed
-            end)
-
-            Data.Gui = gui
         end
 
         --==============================
@@ -183,7 +127,6 @@ Tab:AddButton({
             root:SetNetworkOwner(Player)
         end)
 
-        HoverY = root.Position.Y
         getgenv().CarFlyActive = true
 
         Window:Notify({
@@ -192,10 +135,8 @@ Tab:AddButton({
             Duration = 3
         })
 
-        CreateGui()
-
         --==============================
-        -- LOOP FINAL
+        -- LOOP FINAL (SEM BUG)
         --==============================
         Data.Render = RunService.RenderStepped:Connect(function()
             local throttle = seat.Throttle
@@ -206,17 +147,12 @@ Tab:AddButton({
                 (cam.LookVector * throttle) +
                 (cam.RightVector * steer)
 
-            -- controle de altura
-            if Up then HoverY = HoverY + 1 end
-            if Down then HoverY = HoverY - 1 end
+            -- Y SOMENTE COM INPUT
+            local yVel = 0
+            if Up then yVel = Speed end
+            if Down then yVel = -Speed end
 
-            local targetPos = Vector3.new(
-                root.Position.X,
-                HoverY,
-                root.Position.Z
-            )
-
-            local velocity = (targetPos - root.Position) * 10
+            local velocity = Vector3.new(0, yVel, 0)
 
             if move.Magnitude > 0 then
                 velocity = velocity + (move.Unit * Speed)
