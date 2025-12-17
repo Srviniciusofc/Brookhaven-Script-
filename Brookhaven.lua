@@ -44,14 +44,14 @@ Tab:AddSection("Soares Gay")
 
 
 --==================================================
--- CAR FLY - CONTROLE REAL (VehicleSeat)
+-- CAR FLY RÍGIDO (SEM MOLENGO / SEM +=)
 --==================================================
 
 getgenv().CarFlyActive = getgenv().CarFlyActive or false
 getgenv().CarFlyData = getgenv().CarFlyData or {}
 
 Tab:AddButton({
-    Name = "🚗🪽 Car Fly",
+    Name = "🚗🪽 Car Fly (Estável)",
     Callback = function()
 
         local Players = game:GetService("Players")
@@ -64,24 +64,25 @@ Tab:AddButton({
 
         local Data = getgenv().CarFlyData
         local Speed = Data.Speed or 90
-        local Lift = 50 -- sustentação (não é impulso infinito)
+        local Lift = 45
 
         --==============================
         -- LIMPAR
         --==============================
         local function Clear()
             if Data.Render then Data.Render:Disconnect() end
-            if Data.BV then Data.BV:Destroy() end
-            if Data.BG then Data.BG:Destroy() end
+            if Data.Linear then Data.Linear:Destroy() end
+            if Data.Align then Data.Align:Destroy() end
+            if Data.Attach then Data.Attach:Destroy() end
             if Data.Gui then Data.Gui:Destroy() end
             getgenv().CarFlyData = {}
             getgenv().CarFlyActive = false
         end
 
         --==============================
-        -- PEGAR SEAT / CARRO
+        -- PEGAR CARRO
         --==============================
-        local function GetSeatAndRoot()
+        local function GetCar()
             if Humanoid.SeatPart and Humanoid.SeatPart:IsA("VehicleSeat") then
                 local seat = Humanoid.SeatPart
                 local car = seat:FindFirstAncestorOfClass("Model")
@@ -90,60 +91,6 @@ Tab:AddButton({
                     return seat, root
                 end
             end
-        end
-
-        --==============================
-        -- GUI SPEED (ARRASTÁVEL)
-        --==============================
-        local function CreateSpeedGui()
-            local gui = Instance.new("ScreenGui", Player.PlayerGui)
-            gui.Name = "CarFlySpeedGui"
-            gui.ResetOnSpawn = false
-
-            local frame = Instance.new("Frame", gui)
-            frame.Size = UDim2.new(0,140,0,70)
-            frame.Position = UDim2.new(0.03,0,0.6,0)
-            frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-            frame.BackgroundTransparency = 0.1
-            frame.Active = true
-            frame.Draggable = true
-            Instance.new("UICorner", frame)
-
-            local plus = Instance.new("TextButton", frame)
-            plus.Size = UDim2.new(0.45,0,0.45,0)
-            plus.Position = UDim2.new(0.05,0,0.1,0)
-            plus.Text = "+"
-            plus.TextScaled = true
-            plus.BackgroundColor3 = Color3.fromRGB(40,160,40)
-            Instance.new("UICorner", plus)
-
-            local minus = Instance.new("TextButton", frame)
-            minus.Size = UDim2.new(0.45,0,0.45,0)
-            minus.Position = UDim2.new(0.5,0,0.1,0)
-            minus.Text = "-"
-            minus.TextScaled = true
-            minus.BackgroundColor3 = Color3.fromRGB(160,50,50)
-            Instance.new("UICorner", minus)
-
-            local label = Instance.new("TextLabel", frame)
-            label.Size = UDim2.new(1,0,0.35,0)
-            label.Position = UDim2.new(0,0,0.6,0)
-            label.BackgroundTransparency = 1
-            label.TextScaled = true
-            label.TextColor3 = Color3.new(1,1,1)
-            label.Text = "Speed: "..Speed
-
-            plus.MouseButton1Click:Connect(function()
-                Speed = Speed + 10
-                label.Text = "Speed: "..Speed
-            end)
-
-            minus.MouseButton1Click:Connect(function()
-                Speed = math.max(20, Speed - 10)
-                label.Text = "Speed: "..Speed
-            end)
-
-            Data.Gui = gui
         end
 
         --==============================
@@ -159,7 +106,7 @@ Tab:AddButton({
             return
         end
 
-        local seat, root = GetSeatAndRoot()
+        local seat, root = GetCar()
         if not seat or not root then return end
 
         getgenv().CarFlyActive = true
@@ -170,22 +117,34 @@ Tab:AddButton({
             Duration = 3
         })
 
-        -- BODY MOVERS
-        Data.BV = Instance.new("BodyVelocity", root)
-        Data.BV.MaxForce = Vector3.new(1e9,1e9,1e9)
+        --==============================
+        -- FÍSICA RÍGIDA
+        --==============================
+        local attach = Instance.new("Attachment")
+        attach.Parent = root
+        Data.Attach = attach
 
-        Data.BG = Instance.new("BodyGyro", root)
-        Data.BG.MaxTorque = Vector3.new(0,1e9,0)
-        Data.BG.P = 20000
+        local linear = Instance.new("LinearVelocity")
+        linear.Attachment0 = attach
+        linear.MaxForce = math.huge
+        linear.RelativeTo = Enum.ActuatorRelativeTo.World
+        linear.Parent = root
+        Data.Linear = linear
 
-        CreateSpeedGui()
+        local align = Instance.new("AlignOrientation")
+        align.Attachment0 = attach
+        align.MaxTorque = math.huge
+        align.Responsiveness = 200
+        align.RigidityEnabled = true
+        align.Parent = root
+        Data.Align = align
 
         --==============================
-        -- LOOP (CONTROLE REAL)
+        -- LOOP (CONTROLE FIRME)
         --==============================
         Data.Render = RunService.RenderStepped:Connect(function()
-            local throttle = seat.Throttle -- frente / trás
-            local steer = seat.Steer       -- esquerda / direita
+            local throttle = seat.Throttle
+            local steer = seat.Steer
 
             local cam = Camera.CFrame
             local move =
@@ -198,7 +157,10 @@ Tab:AddButton({
                 velocity = velocity + (move.Unit * Speed)
             end
 
-            Data.BV.Velocity = velocity
+            linear.VectorVelocity = velocity
+
+            -- mantém o carro reto
+            align.CFrame = CFrame.new(root.Position, root.Position + cam.LookVector)
         end)
     end
 })
