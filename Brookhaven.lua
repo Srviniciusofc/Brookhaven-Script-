@@ -2,15 +2,11 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/tlred
 
 
 
- Window = Library:MakeWindow({
-  Title = "Vini Hub : Brookhaven 🏡",
-  SubTitle = "Vinicius",
+local Window = Library:MakeWindow({
+  Title = "Nice Hub : Cool Game",
+  SubTitle = "dev by real_redz",
   ScriptFolder = "redz-library-V5"
-  })
-
-
-
-
+})
 
 
 
@@ -18,170 +14,210 @@ local Minimizer = Window:NewMinimizer({
   KeyCode = Enum.KeyCode.LeftControl
 })
 
+
+
 local MobileButton = Minimizer:CreateMobileMinimizer({
   Image = "rbxassetid://0",
-  BackgroundColor3 = Color3.fromRGB(98, 37, 209)
+  BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 })
 
 
 
 local Tab = Window:MakeTab({
-  Title = "Main",
+  Title = "Cool Tab",
   Icon = "Home"
 })
 
+Tab:AddSection("Section")
 
-
-Tab:AddSection("Soares Gay")
-
-
-
-
-
-
-
-
-
-
---==================================================
--- CAR FLY FINAL DEFINITIVO (SEM GIRAR COM CÂMERA)
---==================================================
-
-getgenv().CarFlyActive = getgenv().CarFlyActive or false
-getgenv().CarFlyData = getgenv().CarFlyData or {}
-
+-- 1️⃣ Teleporte por estilo
 Tab:AddButton({
-    Name = "🚗🪽 Car Fly",
+    Name = "Teleporte Mandrake",
+    Description = "Teleporta para Mandrake se estiver com o estilo correto",
     Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local workspace = game:GetService("Workspace")
 
+        local estiloValue = Character:WaitForChild("Estilo", 5)
+        if estiloValue and estiloValue:IsA("StringValue") then
+            local estilo = estiloValue.Value
+            if estilo == "MandrakeStyle" then
+                local mandrake = workspace:FindFirstChild("Mandrake")
+                if mandrake and mandrake:IsA("BasePart") then
+                    local hrp = Character:WaitForChild("HumanoidRootPart")
+                    hrp.CFrame = mandrake.CFrame + Vector3.new(0, 5, 0)
+                    print("Teleportado para Mandrake!")
+                else
+                    warn("Mandrake não encontrado no workspace")
+                end
+            else
+                print("Estilo diferente, não vai teleportar")
+            end
+        else
+            warn("Objeto 'Estilo' não encontrado no personagem")
+        end
+    end
+})
+
+-- 2️⃣ Chat Spy / Enviar mensagens
+Tab:AddButton({
+    Name = "Chat Spy",
+    Description = "Envia mensagens de verificação no chat",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local StarterGui = game:GetService("StarterGui")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local TextChatService = game:GetService("TextChatService")
+
+        local function sendChatMessage(message)
+            if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+                local textChannel = TextChatService.TextChannels.RBXGeneral
+                if textChannel then
+                    textChannel:SendAsync(message)
+                    return true
+                else
+                    return false
+                end
+            else
+                local success, err = pcall(function()
+                    ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+                end)
+                return success
+            end
+        end
+
+        sendChatMessage("/Verify")
+        wait(0.5)
+        sendChatMessage("Coquette Hub")
+    end
+})
+
+-- 3️⃣ Black Hole
+Tab:AddButton({
+    Name = "Black Hole",
+    Description = "Puxa partes do workspace para você",
+    Callback = function()
         local Players = game:GetService("Players")
         local RunService = game:GetService("RunService")
-        local UIS = game:GetService("UserInputService")
+        local LocalPlayer = Players.LocalPlayer
+        local Workspace = game:GetService("Workspace")
 
-        local Player = Players.LocalPlayer
-        local Camera = workspace.CurrentCamera
-        local Character = Player.Character or Player.CharacterAdded:Wait()
-        local Humanoid = Character:WaitForChild("Humanoid")
+        local angle = 1
+        local radius = 10
+        local blackHoleActive = false
 
-        local Data = getgenv().CarFlyData
-        local Speed = 100
-        local TurnSpeed = 2 -- velocidade de giro
-
-        local Up = false
-        local Down = false
-        local Yaw = 0
-
-        --==============================
-        -- LIMPAR
-        --==============================
-        local function Clear()
-            if Data.Render then Data.Render:Disconnect() end
-            getgenv().CarFlyActive = false
-            getgenv().CarFlyData = {}
+        local function setupPlayer()
+            local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+            local Folder = Instance.new("Folder", Workspace)
+            local Part = Instance.new("Part", Folder)
+            local Attachment1 = Instance.new("Attachment", Part)
+            Part.Anchored = true
+            Part.CanCollide = false
+            Part.Transparency = 1
+            return humanoidRootPart, Attachment1
         end
 
-        --==============================
-        -- PEGAR CARRO
-        --==============================
-        local function GetCar()
-            if Humanoid.SeatPart and Humanoid.SeatPart:IsA("VehicleSeat") then
-                local seat = Humanoid.SeatPart
-                local car = seat:FindFirstAncestorOfClass("Model")
-                if car then
-                    local root = car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart")
-                    return seat, root
+        local humanoidRootPart, Attachment1 = setupPlayer()
+
+        local function ForcePart(v)
+            if v:IsA("BasePart") and not v.Anchored and not v.Parent:FindFirstChildOfClass("Humanoid") then
+                for _, x in next, v:GetChildren() do
+                    if x:IsA("BodyMover") or x:IsA("RocketPropulsion") then
+                        x:Destroy()
+                    end
+                end
+                local Torque = Instance.new("Torque", v)
+                Torque.Torque = Vector3.new(1000000, 1000000, 1000000)
+                local AlignPosition = Instance.new("AlignPosition", v)
+                local Attachment2 = Instance.new("Attachment", v)
+                Torque.Attachment0 = Attachment2
+                AlignPosition.MaxForce = math.huge
+                AlignPosition.MaxVelocity = math.huge
+                AlignPosition.Responsiveness = 500
+                AlignPosition.Attachment0 = Attachment2
+                AlignPosition.Attachment1 = Attachment1
+            end
+        end
+
+        local function toggleBlackHole()
+            blackHoleActive = not blackHoleActive
+            if blackHoleActive then
+                for _, v in next, Workspace:GetDescendants() do
+                    ForcePart(v)
+                end
+                Workspace.DescendantAdded:Connect(function(v)
+                    if blackHoleActive then
+                        ForcePart(v)
+                    end
+                end)
+                RunService.RenderStepped:Connect(function()
+                    angle = angle + math.rad(2)
+                    local offsetX = math.cos(angle) * radius
+                    local offsetZ = math.sin(angle) * radius
+                    Attachment1.WorldCFrame = humanoidRootPart.CFrame * CFrame.new(offsetX, 0, offsetZ)
+                end)
+            else
+                Attachment1.WorldCFrame = CFrame.new(0, -1000, 0)
+            end
+        end
+
+        toggleBlackHole()
+    end
+})
+
+-- 4️⃣ Puxar Parts
+Tab:AddButton({
+    Name = "Bring Parts",
+    Description = "Puxa partes de um jogador selecionado",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
+        local LocalPlayer = Players.LocalPlayer
+        local Workspace = game:GetService("Workspace")
+
+        local Folder = Instance.new("Folder", Workspace)
+        local Part = Instance.new("Part", Folder)
+        local Attachment1 = Instance.new("Attachment", Part)
+        Part.Anchored = true
+        Part.CanCollide = false
+        Part.Transparency = 1
+
+        if not getgenv().Network then
+            getgenv().Network = { BaseParts = {}, Velocity = Vector3.new(14.46262424, 14.46262424, 14.46262424) }
+            Network.RetainPart = function(Part)
+                if Part:IsA("BasePart") and Part:IsDescendantOf(Workspace) then
+                    table.insert(Network.BaseParts, Part)
+                    Part.CanCollide = false
                 end
             end
+
+            RunService.Heartbeat:Connect(function()
+                sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+                for _, Part in pairs(Network.BaseParts) do
+                    if Part:IsDescendantOf(Workspace) then
+                        Part.Velocity = Network.Velocity
+                    end
+                end
+            end)
         end
 
-        --==============================
-        -- INPUT SUBIR / DESCER
-        --==============================
-        UIS.InputBegan:Connect(function(i,g)
-            if g then return end
-            if i.KeyCode == Enum.KeyCode.Space then Up = true end
-            if i.KeyCode == Enum.KeyCode.LeftControl then Down = true end
-        end)
-
-        UIS.InputEnded:Connect(function(i,g)
-            if i.KeyCode == Enum.KeyCode.Space then Up = false end
-            if i.KeyCode == Enum.KeyCode.LeftControl then Down = false end
-        end)
-
-        --==============================
-        -- TOGGLE
-        --==============================
-        if getgenv().CarFlyActive then
-            Clear()
-            Window:Notify({
-                Title = "Car Fly",
-                Content = "DESATIVADO",
-                Duration = 3
-            })
-            return
-        end
-
-        local seat, root = GetCar()
-        if not seat or not root then return end
-
-        -- física local
-        pcall(function()
-            root:SetNetworkOwner(Player)
-        end)
-
-        -- yaw inicial baseado no carro (NÃO câmera)
-        local look = root.CFrame.LookVector
-        Yaw = math.atan2(look.X, look.Z)
-
-        getgenv().CarFlyActive = true
-
-        Window:Notify({
-            Title = "Car Fly",
-            Content = "ATIVADO",
-            Duration = 3
-        })
-
-        --==============================
-        -- LOOP FINAL CORRETO
-        --==============================
-        Data.Render = RunService.RenderStepped:Connect(function(dt)
-            local throttle = seat.Throttle
-            local steer = seat.Steer
-
-            -- atualiza yaw APENAS pelo steer
-            Yaw = Yaw - (steer * TurnSpeed * dt)
-
-            local forward = Vector3.new(
-                math.sin(Yaw),
-                0,
-                math.cos(Yaw)
-            )
-
-            local right = Vector3.new(
-                forward.Z,
-                0,
-                -forward.X
-            )
-
-            local move = (forward * throttle) + (right * steer)
-
-            -- eixo Y somente por input
-            local yVel = 0
-            if Up then yVel = Speed end
-            if Down then yVel = -Speed end
-
-            local velocity = Vector3.new(0, yVel, 0)
-
-            if move.Magnitude > 0 then
-                velocity = velocity + (move.Unit * Speed)
+        local function ForcePart(v)
+            if v:IsA("BasePart") and not v.Anchored and not v.Parent:FindFirstChildOfClass("Humanoid") then
+                local Torque = Instance.new("Torque", v)
+                Torque.Torque = Vector3.new(100000, 100000, 100000)
+                local AlignPosition = Instance.new("AlignPosition", v)
+                local Attachment2 = Instance.new("Attachment", v)
+                Torque.Attachment0 = Attachment2
+                AlignPosition.MaxForce = math.huge
+                AlignPosition.MaxVelocity = math.huge
+                AlignPosition.Responsiveness = 200
+                AlignPosition.Attachment0 = Attachment2
+                AlignPosition.Attachment1 = Attachment1
             end
-
-            -- movimento duro
-            root.AssemblyLinearVelocity = velocity
-            root.AssemblyAngularVelocity = Vector3.zero
-
-            -- trava rotação (SEM câmera)
-            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, Yaw, 0)
-        end)
+        end
     end
 })
