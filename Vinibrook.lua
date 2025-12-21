@@ -18,9 +18,9 @@ local LocalPlayer = Players.LocalPlayer
 -- 🔹 JANELA PRINCIPAL
 --====================================================
 local Window = Library:MakeWindow({
-    Title = "Embee | Nova era",
+    Title = "Vini Hub| Nova era",
     SubTitle = "By: Vini Hub",
-    LoadText = "Carregando Embee Hub...",
+    LoadText = "Carregando Vini Hub...",
     Flags = "FireHub_Brookhaven",
     Size = UDim2.fromScale(0.55, 0.65) -- Responsivo Mobile/PC
 })
